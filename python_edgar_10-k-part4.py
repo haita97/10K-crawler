@@ -1,3 +1,4 @@
+from tkinter import E
 import requests
 import re
 import pandas
@@ -10,9 +11,8 @@ headers = {
 
 con = sqlite3.connect('result.db')
 cur = con.cursor()
-cur.execute('DROP TABLE IF EXISTS result')
 cur.execute(
-    'CREATE TABLE result (conm TEXT, type TEXT, cik TEXT, date TEXT, number TEXT)')
+    'CREATE TABLE if not exists result (conm TEXT, type TEXT, cik TEXT, date TEXT, number TEXT)')
 
 engine = create_engine('sqlite:///idx3.db')
 with engine.connect() as conn, conn.begin():
@@ -32,7 +32,6 @@ for index,line in idx.iterrows():
     if result:
         numebr=len(result)
     cur.executemany('INSERT INTO result VALUES (?, ?, ?, ?, ?)', [(line[0], line[1], line[2], line[3], number)])
-    
 con.commit()
 con.close()
 

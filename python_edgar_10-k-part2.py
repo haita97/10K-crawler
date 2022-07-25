@@ -1,3 +1,4 @@
+import time
 import requests
 import re
 import pandas
@@ -11,32 +12,39 @@ headers = {
 
 con = sqlite3.connect('idx2.db')
 cur = con.cursor()
-cur.execute('DROP TABLE IF EXISTS idx2')
 cur.execute(
-    'CREATE TABLE idx2 (conm TEXT, type TEXT, cik TEXT, date TEXT, path TEXT)')
+    'CREATE TABLE if not exists idx2 (id TEXT,conm TEXT, type TEXT, cik TEXT, date TEXT, path TEXT)')
 
 
 
 engine = create_engine('sqlite:///idx1.db')
 with engine.connect() as conn, conn.begin():
     idx = pandas.read_sql_table('idx1', conn)
+    
+try:
+    engine = create_engine('sqlite:///idx2.db')
+    with engine.connect() as conn, conn.begin():
+        idx2 = pandas.read_sql_table('idx2', conn)
+except:
+    idx2 = pandas.DataFrame(columns=['id','conm', 'type', 'cik', 'date', 'path'])
 
+idx_diff=idx[~idx.id.isin(idx2.id)]
 
-for index,line in idx.iterrows():
-
-    fn1 = str(line[0])
-    fn2 = re.sub(r'[/\\]', '', str(line[1]))
-    fn3 = re.sub(r'[/\\]', '', str(line[2]))
-    fn4 = str(line[3])
-    saveas = '-'.join([fn1, fn2, fn3, fn4])
-    url = line[4].strip()
+for index,line in idx_diff.iterrows():
+    fn1 = str(line[1])
+    fn2 = re.sub(r'[/\\]', '', str(line[2]))
+    fn3 = re.sub(r'[/\\]', '', str(line[3]))
+    fn4 = str(line[4])
+    url = line[5].strip()
     text=requests.get('%s' % url,headers=headers).text
     found= re.findall(r'"/(.*?txt)"',text)
     path='https://www.sec.gov/'+ found[0]
     print(path, 'downloaded and wrote to SQLite')
-    cur.executemany('INSERT INTO idx2 VALUES (?, ?, ?, ?, ?)', [(line[0], line[1], line[2], line[3], path)])
+    print([(line[0], line[1], line[2], line[3],line[4], path)])
+    cur.executemany('INSERT INTO idx2 VALUES (?, ?, ?, ?, ?, ?)', [(line[0], line[1], line[2], line[3],line[4], path)])
+    con.commit()
+
     
-con.commit()
 con.close()
 
 

@@ -7,10 +7,11 @@ import requests
 import sqlite3
 import datetime
 from email import header
+import uuid
 # %%
 current_year = datetime.date.today().year
 current_quarter = (datetime.date.today().month - 1) // 3 + 1
-start_year = 2019
+start_year = 2017
 years = list(range(start_year, current_year))
 quarters = ['QTR1', 'QTR2', 'QTR3', 'QTR4']
 history = [(y, q) for y in years for q in quarters]
@@ -26,7 +27,7 @@ con = sqlite3.connect('idx1.db')
 cur = con.cursor()
 cur.execute('DROP TABLE IF EXISTS idx1')
 cur.execute(
-    'CREATE TABLE idx1 (conm TEXT, type TEXT, cik TEXT, date TEXT, path TEXT)')
+    'CREATE TABLE idx1 (id TEXT,conm TEXT, type TEXT, cik TEXT, date TEXT, path TEXT)')
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.124 Safari/537.36 Edg/102.0.1245.44'
@@ -40,9 +41,13 @@ for url in urls:
     cikloc = lines[7].find('CIK')
     dateloc = lines[7].find('Date Filed')
     urlloc = lines[7].find('URL')
-    records = [tuple([line[:typeloc].strip(), line[typeloc:cikloc].strip(), line[cikloc:dateloc].strip(),
-                      line[dateloc:urlloc].strip(), line[urlloc:].strip()]) for line in lines[9:]]
-    cur.executemany('INSERT INTO idx1 VALUES (?, ?, ?, ?, ?)', records)
+    records=[]
+    for line in lines[9:]:
+        if line[typeloc:cikloc].strip() == '10-K':
+            records.append(tuple([str(uuid.uuid1()),line[:typeloc].strip(), line[typeloc:cikloc].strip(), line[cikloc:dateloc].strip(),
+                      line[dateloc:urlloc].strip(), line[urlloc:].strip()]))
+    cur.executemany('INSERT INTO idx1 VALUES (?, ?, ?, ?, ?, ?)', records)
+    
     print(url, 'downloaded and wrote to SQLite')
 
 con.commit()
